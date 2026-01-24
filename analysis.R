@@ -15,6 +15,8 @@ library(stats)
 library(car)
 #for fitting decay curves
 library(broom)
+#for modelling effects of moisture on nematode abundanve
+library(Hmisc)
 #for diversity analysis
 library(vegan)
 #for Moran's I to test pseudoreplication
@@ -902,9 +904,9 @@ d$Vegetation[d$Vegetation == 'Bracken'] <- 'Bracken Present'
 # 
 # 
 # #plot number of individuals per 100g dry soil for each sample
-# d_abundance <- d
+d_abundance <- d
 
-d_abundance$Total <- rowSums(d_abundance[, (4:355)])
+d_abundance$Total <- rowSums(d_abundance[, (4:354)])
 #if we assume each soil core was fully filled to 10 cm depth in a 5 cm diamter cylinder, we can standardize by soil volume and scale up to per m2
 volume <- 0.1 * (pi*(0.025^2))
 d_abundance$CoreVolume <- volume
@@ -1088,6 +1090,8 @@ rownames(d) <- d[,1]
 #just the morphospecies counts
 spe <- d[,-(1:3)]
 spe <- as.matrix(spe)
+#total number of mites/springtails after 7 days
+print(sum(spe))
 #k is the number of reduced dimensions
 #trymax sets the default number of iterations
 example_NMDS <- metaMDS(spe, distance = "bray", k = 2, maxit = 999, trymax = 500)
@@ -1106,7 +1110,7 @@ pchs<- c(rep(15, 5), rep(0, 5), rep(16, 5), rep(1, 5), rep(17, 5), rep(2, 5))
 #display the stress if using all morphospecies
 #text(-0.6,2.2, paste("Stress = ", round(example_NMDS$stress, 3)))
 #display the stress if using only mites and springtails
-text(-1.7,1.5, paste("Stress = ", round(example_NMDS$stress, 3)))
+text(-1.7,1.0, paste("Stress = ", round(example_NMDS$stress, 3)))
 #visualise the points and ellipses
 for(i in unique(treat)) {
   #we have added an if statement so we can chose which points and ellipses to plot at a time e.g. i == "Grassland Bracken".  If we want to plot all ellipses simultaneously, set i == i
@@ -1172,7 +1176,8 @@ rownames(d) <- d[,1]
 #just the morphospecies counts
 spe <- d[,-(1:3)]
 spe <- as.matrix(spe)
-
+#number of mites/springtails after 14 days
+print(sum(spe))
 #all morphospecies
 #spe <- all_data[,51:436]
 #replace row index with sample names
@@ -1311,8 +1316,6 @@ d <- readr::read_csv(
   here::here("Data", "Soil-parameters-measured.csv")
 ) 
 
-#for modelling effects of moisture on nematode abundanve
-library(Hmisc)
 p <- ggplot(d,aes(`Water content as percentage wet soil mass`, Nematodespergdrysoil, colour = Vegetation)) +
   stat_summary(fun.data= mean_cl_normal) + 
   geom_smooth(method='lm')  +
@@ -1337,9 +1340,32 @@ p <- ggplot(d,aes(`Water content as percentage wet soil mass`, Nematodespergdrys
                       ) 
 
 show(p)
-#nested anova
-anova <- aov(d$Nematodespergdrysoil ~ d$`Water content as percentage wet soil mass` + factor(d$Vegetation))
-summary(anova)
+#fit the models separately so we can extract the F statistic and p value
+# Fit separate models
+mod_list <- by(
+  d,
+  d$Vegetation,
+  function(sub) lm(
+    Nematodespergdrysoil ~ `Water content as percentage wet soil mass`,
+    data = sub
+  )
+)
+
+# Extract F-statistic and p-value for each model
+lapply(mod_list, function(m) {
+  s <- summary(m)
+  fstat <- s$fstatistic
+  pval <- pf(fstat[1], fstat[2], fstat[3], lower.tail = FALSE)
+  
+  c(
+    F = unname(fstat[1]),
+    df1 = unname(fstat[2]),
+    df2 = unname(fstat[3]),
+    p_value = pval
+  )
+})
+
+
 
 
 #### ANOVA/stats tests ----
@@ -1348,7 +1374,7 @@ indvs <- readr::read_csv(
 ) 
 #indvs <- na.omit(indvs)
 
-anova <- aov(indvs$individualsperm2to10cmdepth ~ indvs$Habitat * indvs$Vegetation)
+anova <- aov(indvs$Morphotype_simpson ~ indvs$Habitat * indvs$Vegetation)
 summary(anova)
 
 #tukey's test to identify significant interactions
@@ -1389,11 +1415,9 @@ hist(dists)
 #create spatial weights
 lw <- nb2listw(nb, style = "W")
 #test an environment variable
-moran.test(d$individualsperm2to10cmdepth, lw)
-
-
-
+moran.test(d$Nematodespergdrysoil, lw)
 moran.plot(d$Morphotype_shannon, lw)
+
 #now try on the residuals from community dataset
 #run NMDS first in NMDS tab (veg or morphotype), then:
 site_scores <- scores(example_NMDS, display = "sites")  # 2 columns for 2 axes
@@ -1508,7 +1532,7 @@ moist$IndividualsGained <- moist$Individuals_2 - moist$Individuals_1
 #for modelling effects of moisture/extract wewek on mesofauna catch.richness
 library(glmmTMB)
 library(ggeffects)
-model <- glmmTMB(Richness ~ Week*Habitat,
+model <- glmmTMB(Individuals ~ Week,
                  data = moist_long,
                  family = gaussian,
 )
