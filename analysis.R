@@ -34,6 +34,9 @@ library(here)
 library(scales)
 #to save figures as .svg
 library(svglite)
+#for glms
+library(lme4)
+library(glmmTMB)
 
 #### generate maps of sample locations (Figure 1) ----
 #to get google satellite layer, Go to the Google Cloud Console.  Create a new project (or use an existing one). Enable the Maps Static API and Geocoding API.  Get your API key.
@@ -1374,7 +1377,7 @@ indvs <- readr::read_csv(
 ) 
 #indvs <- na.omit(indvs)
 
-anova <- aov(indvs$Morphotype_simpson ~ indvs$Habitat * indvs$Vegetation)
+anova <- aov(indvs$`DOC Concentration (mgCperg)`~ indvs$Habitat * indvs$Vegetation)
 summary(anova)
 
 #tukey's test to identify significant interactions
@@ -1384,6 +1387,7 @@ print(tukey)
 #compact letter display
 cld <- multcompLetters4(anova, tukey)
 print(cld)
+
 
 plot(anova, 1)
 #levene test.  if p value < 0.05, there is eidence to suggest that the variance across groups is statistically significantly different.
@@ -1538,3 +1542,74 @@ model <- glmmTMB(Individuals ~ Week,
 )
 summary(model)
 
+
+#### GLMs ----
+
+#load in the data
+indvs <- readr::read_csv(  here::here("Data", "Soil-parameters-measured.csv"))
+#create "location" by joining lat and long into one variable
+indvs$Location <- paste(indvs$LatitudeN, indvs$LongitudeE, sep = ", ")
+
+library(sf)
+
+# convert longitude, latitude to sf object
+sf_data <- st_as_sf(indvs, coords = c("LongitudeE", "LatitudeN"), crs = 4326)
+# project to UTM (example: zone depends on your location)
+sf_data <- st_transform(sf_data, crs = 32630)  # UK example
+# extract projected coords
+coords <- st_coordinates(sf_data)
+indvs$X <- coords[,1]
+indvs$Y <- coords[,2]
+
+# Create a position factor
+indvs$pos <- numFactor(scale(indvs$LongitudeE), scale(indvs$LatitudeN))
+indvs$group <- factor(1)  # single spatial group
+#model whether variable differs significantly between habitat anda bracken, with location as a random effect
+glmer(pH ~ Habitat*Vegetation + (1|X) + (1|Y), family = poisson, data=indvs)
+# fits an exponential spatial correlation structure — nearby samples are more correlated than distant ones.
+model <- glmmTMB(pH ~ Habitat * Vegetation + LatitudeN + LongitudeE,
+                 family = Gamma(link="log"), data = indvs)
+
+model
+
+hist(1/log10(indvs$Morphotype_simpson))
+hist(indvs$pH)
+
+
+
+#this is working quite nicely, so this gls may be the approach to use
+library(nlme)
+
+model <- gls(
+  pH ~ Habitat * Vegetation,
+  correlation = corExp(form = ~ X + Y),
+  data = indvs
+)
+
+summary(model)
+
+
+#morphotype community composition
+d <- readr::read_csv(here::here("Data", "Week-1+2-mites-springtails-morphotypes.csv"), show_col_types = FALSE) 
+#order samples by ID alphabetically
+d <- arrange(d, d["Sample ID"])
+d <- as.data.frame(d)
+#remove all empty rows
+d <- d[1:30,]
+#replace null (empty excell cell) with "0"
+d[is.na(d)] <- 0
+#replace row index with sample names
+rownames(d) <- d[,1]
+#just the morphospecies counts
+spe <- d[,-(1:3)]
+spe <- as.matrix(spe)
+
+#hellinger transform the communtiy matrix
+spe_hell <- decostand(spe, method = "hellinger")
+#combine with factors and sample ID
+d <- cbind(indvs[, c("Location", "LongitudeE", "LatitudeN", "X", "Y")], d)
+
+#parcel out varince due to spatial correlation first - this is working!
+community <- rda(spe_hell ~ Habitat * Vegetation + Condition(X, Y), data = d)
+community
+anova(community, by = "terms", step=4999)
