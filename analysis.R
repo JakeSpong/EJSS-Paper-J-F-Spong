@@ -36,6 +36,7 @@ library(scales)
 library(svglite)
 #for glms
 library(lme4)
+library(Matrix)
 library(glmmTMB)
 
 #### generate maps of sample locations (Figure 1) ----
@@ -282,10 +283,14 @@ plot(example_NMDS, col = "white")
 #assign the treatments to relevant rows of the dataframe
 treat=c(rep("Grassland Bracken Present",5),rep("Grassland Bracken Absent",5), rep("Heathland Bracken Present",5),rep("Heathland Bracken Absent",5), rep("Woodland Bracken Present", 5), rep("Woodland Bracken Absent", 5))
 #set the colour for each treatment
-colors =c(rep("#999999",5),rep("#E69F00",5), rep("#56B4E9",5),rep("#009E73",5), rep("#CC79A7", 5), rep("#0072B2", 5)) 
+colors =c(rep("green",5),rep("green",5), rep("purple",5),rep("purple",5), rep("brown", 5), rep("brown", 5)) 
 #point shapes
-pchs<- c(rep(15, 5), rep(0, 5), rep(16, 5), rep(1, 5), rep(17, 5), rep(2, 5)) 
-text(-1.8,1.3, paste("Stress = ", round(example_NMDS$stress, 3)))
+pchs<- c(rep(16, 5), rep(17, 5), rep(16, 5), rep(17, 5), rep(16, 5), rep(17, 5)) 
+
+#change line type for bracken, non bracken
+ltys <-  c(rep(2, 5), rep(1, 5), rep(2, 5), rep(1, 5), rep(2, 5), rep(1, 5))
+
+text(-1.1,1.3, paste("Stress = ", round(example_NMDS$stress, 3)))
 
 for(i in unique(treat)) {
   #we have added an if statement so we can chose which points and ellipses to plot at a time e.g. i == "Grassland Bracken".  If we want to plot all ellipses simultaneously, set i == i
@@ -293,19 +298,19 @@ for(i in unique(treat)) {
     #plot the sample IDs on the NMDS, with the colour specific to the treatment
     # orditorp(example_NMDS$point[grep(i,treat),],display="sites", col=colors[grep(i,treat)], cex=0.7, air=0.01)
     #plot point codes for each site
-    points(example_NMDS$point[grep(i,treat),], pch = pchs[grep(i,treat)], col = colors[grep(i,treat)], cex = 0.7)
+    points(example_NMDS$point[grep(i,treat),], pch = pchs[grep(i,treat)], col = colors[grep(i,treat)], cex = 1)
     
     #plots ellipse with ellipse centered on the centroid of the samples from the same treatment (and thus encapsulating 95% of the variance)
     ordiellipse(example_NMDS$point[grep(i,treat),],kind = "se", conf = 0.95, draw="polygon",
-                groups=treat[treat==i],col=colors[grep(i,treat)],label=F) } }
-#specify legend manually for text sample IDs
-#legend(1.7,0.9, legend = c("Grassland Bracken Present", "Grassland Bracken Asbent", "Heathland Bracken Present", "Heathland Bracken Absent", "Woodland Bracken Present", "Woodland Bracken Absent"), fill = c("#999999", "#E69F00", "#56B4E9", "#009E73", "#CC79A7", "#0072B2"))
+                groups=treat[treat==i],col=colors[grep(i,treat)],label=F, lty = ltys[grep(i, treat)]) } }
 
-#save the file using Export -> Save As Image -> Width = 655, Height = 500 
+#save the file using Export -> Save As Image -> Width = 550, Height = 500 
 #save the legend as a separate file and combine in Inkscape
 plot(example_NMDS, col = "white")
 #legend for point codes
-legend(-1.7,0.9, legend=c("Grassland Bracken Present", "Grassland Bracken Absent", "Heathland Bracken Present", "Heathland Bracken Absent", "Woodland Bracken Present", "Woodland Bracken Absent"), col = c("#999999", "#E69F00", "#56B4E9", "#009E73", "#CC79A7", "#0072B2"), pch = c(15, 0,16,1,17,2))
+#legend(-1.5,0.9, title = "Habitat", legend=c("Grassland", "Heathland", "Woodland"), col = c("green", "purple", "brown"), pch = c(16), bty = "n")
+#legend(-1.5,0.4, legend=c("Bracken Absent", "Bracken Present"), pch = c(17, 16), bty = "n")
+
 
 
 #save the file using Export -> Save As Image -> Width = 655, Height = 500 
@@ -1098,6 +1103,7 @@ print(sum(spe))
 #k is the number of reduced dimensions
 #trymax sets the default number of iterations
 example_NMDS <- metaMDS(spe, distance = "bray", k = 2, maxit = 999, trymax = 500)
+
 #Shephard plot shows scatter around the regession between the interpoint distances in the final configuration (i.e. the distances between each pair of communities) against their original dissimilarities.  Large scatter around the line suggests the original dissimilarities are not well preserved in the reduced number of dimensions
 stressplot(example_NMDS)
 
@@ -1106,10 +1112,12 @@ plot(example_NMDS, col = "white")
 #assign the treatments to relevant rows of the dataframe
 treat=c(rep("Grassland Bracken Present",5),rep("Grassland Bracken Absent",5), rep("Heathland Bracken Present",5),rep("Heathland Bracken Absent",5), rep("Woodland Bracken Present", 5), rep("Woodland Bracken Absent", 5))
 #set the colour for each treatment
-#colors =c(rep("#44AA99",5),rep("#117733",5), rep("#88CCEE",5),rep("#332288",5), rep("#AA4499", 5), rep("#882255", 5)) 
-colors =c(rep("#999999",5),rep("#E69F00",5), rep("#56B4E9",5),rep("#009E73",5), rep("#CC79A7", 5), rep("#0072B2", 5)) 
+colors =c(rep("green",5),rep("green",5), rep("purple",5),rep("purple",5), rep("brown", 5), rep("brown", 5)) 
 #shapes for point codes
-pchs<- c(rep(15, 5), rep(0, 5), rep(16, 5), rep(1, 5), rep(17, 5), rep(2, 5))
+pchs<- c(rep(16, 5), rep(17, 5), rep(16, 5), rep(17, 5), rep(16, 5), rep(17, 5))
+#change line type for bracken, non bracken
+ltys <-  c(rep(2, 5), rep(1, 5), rep(2, 5), rep(1, 5), rep(2, 5), rep(1, 5))
+
 #display the stress if using all morphospecies
 #text(-0.6,2.2, paste("Stress = ", round(example_NMDS$stress, 3)))
 #display the stress if using only mites and springtails
@@ -1121,12 +1129,12 @@ for(i in unique(treat)) {
     #plot the sample IDs on the NMDS, with the colour specific to the treatment
     # orditorp(example_NMDS$point[grep(i,treat),],display="sites", col=colors[grep(i,treat)], cex=0.7, air=0.01)
     #plot point codes for each site
-    points(example_NMDS$point[grep(i,treat),], pch = pchs[grep(i,treat)], col = colors[grep(i,treat)], cex = 0.7)
+    points(example_NMDS$point[grep(i,treat),], pch = pchs[grep(i,treat)], col = colors[grep(i,treat)], cex = 1)
     #plots ellipse with ellipse centered on the centroid of the samples from the same treatment 
     
     #ellipses are of the kind se = standard error (or sd = standard deviation) at a 95% confidence
     ordiellipse(example_NMDS$point[grep(i,treat),], kind = "se", conf = 0.95, draw="polygon",
-                groups=treat[treat==i],col=colors[grep(i,treat)],label=F) } }
+                groups=treat[treat==i],col=colors[grep(i,treat)],label=F, lty = ltys[grep(i, treat)]) } }
 
 
 #save the file using Export -> Save As Image -> Width = 655, Height = 500 
@@ -1200,13 +1208,13 @@ plot(example_NMDS, col = "white")
 #assign the treatments to relevant rows of the dataframe
 treat=c(rep("Grassland Bracken Present",5),rep("Grassland Bracken Absent",5), rep("Heathland Bracken Present",5),rep("Heathland Bracken Absent",5), rep("Woodland Bracken Present", 5), rep("Woodland Bracken Absent", 5))
 #set the colour for each treatment
-#colors =c(rep("#44AA99",5),rep("#117733",5), rep("#88CCEE",5),rep("#332288",5), rep("#AA4499", 5), rep("#882255", 5)) 
-colors =c(rep("#999999",5),rep("#E69F00",5), rep("#56B4E9",5),rep("#009E73",5), rep("#CC79A7", 5), rep("#0072B2", 5)) 
+#set the colour for each treatment
+colors =c(rep("green",5),rep("green",5), rep("purple",5),rep("purple",5), rep("brown", 5), rep("brown", 5)) 
 #shapes for point codes
-pchs<- c(rep(15, 5), rep(0, 5), rep(16, 5), rep(1, 5), rep(17, 5), rep(2, 5))
-#display the stress for all morphotypes
-#text(-0.8,1.4, paste("Stress = ", round(example_NMDS$stress, 3)))
-#display the stress for only mites and springtails
+pchs<- c(rep(16, 5), rep(17, 5), rep(16, 5), rep(17, 5), rep(16, 5), rep(17, 5))
+#change line type for bracken, non bracken
+ltys <-  c(rep(2, 5), rep(1, 5), rep(2, 5), rep(1, 5), rep(2, 5), rep(1, 5))
+
 text(-2,1.3, paste("Stress = ", round(example_NMDS$stress, 3)))
 #visualise the points and ellipses
 for(i in unique(treat)) {
@@ -1215,14 +1223,14 @@ for(i in unique(treat)) {
     #plot the sample IDs on the NMDS, with the colour specific to the treatment
     # orditorp(example_NMDS$point[grep(i,treat),],display="sites", col=colors[grep(i,treat)], cex=0.7, air=0.01)
     #plot point codes for each site
-    points(example_NMDS$point[grep(i,treat),], pch = pchs[grep(i,treat)], col = colors[grep(i,treat)], cex = 0.7)
+    points(example_NMDS$point[grep(i,treat),], pch = pchs[grep(i,treat)], col = colors[grep(i,treat)], cex = 1)
     #plots ellipse with ellipse centered on the centroid of the samples from the same treatment (and thus encapsulating 95% of the variance)
     ordiellipse(example_NMDS$point[grep(i,treat),],kind = "se", conf = 0.95, draw="polygon",
-                groups=treat[treat==i],col=colors[grep(i,treat)],label=F) } }
+                groups=treat[treat==i],col=colors[grep(i,treat)],label=F, lty = ltys[grep(i, treat)]) } }
 
 
 
-#save the file using Export -> Save As Image -> Width = 655, Height = 500 
+#save the file using Export -> Save As Image -> Width = 550, Height = 500 
 
 # do PERMANOVA analysis
 #data frame containing the independent variables (Habitat, Vegetation) we shall be using in our PERMANOVA
@@ -1547,6 +1555,29 @@ summary(model)
 
 #load in the data
 indvs <- readr::read_csv(  here::here("Data", "Soil-parameters-measured.csv"))
+#create treatment variable by comining habitat and veg
+indvs$Treatment <- paste(indvs$Habitat, indvs$Vegetation, sep = "-")
+#create "location" by joining lat and long into one variable
+indvs$Location <- paste(indvs$LatitudeN, indvs$LongitudeE, sep = ", ")
+hist(indvs$Morphotype_richness)
+# fits an exponential spatial correlation structure — nearby samples are more correlated than distant ones.
+model <- glmmTMB(Morphotype_richness ~ Vegetation + (1|Habitat), family = poisson, data = indvs)
+
+#this is working, hurrah
+model <- glmer(Morphotype_richness ~ Vegetation*Habitat + (1|Location), family = poisson, data=indvs)
+summary(model)
+deviance(model)/df.residual(model)
+
+#for Cook's distance
+library(influence.ME)
+
+infl <- influence(model, group = "Location")  # or "obs" for observation-level
+cooks <- cooks.distance(infl)
+
+cooks
+
+
+
 #create "location" by joining lat and long into one variable
 indvs$Location <- paste(indvs$LatitudeN, indvs$LongitudeE, sep = ", ")
 
@@ -1565,7 +1596,8 @@ indvs$Y <- coords[,2]
 indvs$pos <- numFactor(scale(indvs$LongitudeE), scale(indvs$LatitudeN))
 indvs$group <- factor(1)  # single spatial group
 #model whether variable differs significantly between habitat anda bracken, with location as a random effect
-glmer(pH ~ Habitat*Vegetation + (1|X) + (1|Y), family = poisson, data=indvs)
+glmer(Morphotype_richness ~ Vegetation + (1|Habitat), family = poisson, data=indvs)
+
 # fits an exponential spatial correlation structure — nearby samples are more correlated than distant ones.
 model <- glmmTMB(pH ~ Habitat * Vegetation + LatitudeN + LongitudeE,
                  family = Gamma(link="log"), data = indvs)
