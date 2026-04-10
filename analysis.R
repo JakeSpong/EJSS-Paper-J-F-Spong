@@ -1557,14 +1557,118 @@ summary(model)
 indvs <- readr::read_csv(  here::here("Data", "Soil-parameters-measured.csv"))
 #create treatment variable by comining habitat and veg
 indvs$Treatment <- paste(indvs$Habitat, indvs$Vegetation, sep = "-")
+# convert longitude, latitude to sf object
+sf_data <- st_as_sf(indvs, coords = c("LongitudeE", "LatitudeN"), crs = 4326)
+# project to UTM (example: zone depends on your location)
+sf_data <- st_transform(sf_data, crs = 32630)  # UK example
+# extract projected coords
+coords <- st_coordinates(sf_data)
+#coordinates in m in the Universal Transverse Meractor cartesian coordinate system
+indvs$x <- coords[,1]
+indvs$y <- coords[,2]
 #create "location" by joining lat and long into one variable
-indvs$Location <- paste(indvs$LatitudeN, indvs$LongitudeE, sep = ", ")
-hist(indvs$Morphotype_richness)
+indvs$Location <- numFactor(indvs$x, indvs$y)
+indvs$pos <- numFactor(scale(indvs$x), scale(indvs$y))
+#create a dummy group factor to be used as a random term
+indvs$ID <- factor(rep(1, nrow(indvs)))
+
+#ensure habitat is treated as a factor
+indvs$Habitat <- factor(indvs$Habitat)
+indvs$Vegetation <- factor(indvs$Vegetation)
+indvs$Treatment <- factor(indvs$Treatment)
+
+#working!
+m_tmb <- glmmTMB(pH ~ Vegetation*Habitat + (1 | pos), indvs) # may not be correct? 
+summary(m_tmb)
+#check normality of residuals
+ibrary(DHARMa)
+sim <- simulateResiduals(m_tmb)
+plot(sim)
+#or
+qqnorm(resid(m_tmb))
+qqline(resid(m_tmb))
+#check for homoscedasticity
+plot(fitted(model), resid(model))
+abline(h = 0, lty = 2)
+#check if spatial structure remains
+plot(indvs$pos, resid(model))
+
+library(spdep)
+
+coords <- as.matrix(indvs[, c("LongitudeE", "LatitudeN")])
+nb <- knn2nb(knearneigh(coords, k = 4))
+lw <- nb2listw(nb)
+
+moran.test(resid(m_tmb), lw)
+
+#alternatives
+
+library(mgcv)
+
+model <- gam(
+  TotalCarbon ~ Vegetation * Habitat + s(LongitudeE, LatitudeN),
+  data = indvs,
+  method = "REML"
+)
+summary(model)
+
+library(spaMM)
+model <- fitme(TotalCarbon ~ Vegetation * Habitat + Matern(1|LongitudeE + LatitudeN), data = indvs, family = gaussian)
+summary(model)
+
+#example code for spatial modelling
+library(geoR)
+library(viridis)
+data(ca20)
+# put this in a data frame
+dat <- data.frame(x = ca20$coords[,1], y = ca20$coords[,2], calcium = ca20$data, elevation = ca20$covariate[,1], region = factor(ca20$covariate[,2]))
+# plot the data
+ggplot(dat, aes(x=x, y = y, color =calcium, shape = region)) +
+  geom_point() +
+  scale_color_viridis(option = "A")
+library(spaMM)
+# fit the model
+m_spamm <- fitme(calcium ~ elevation + region + Matern(1 | x + y), data = dat, family = "gaussian") # this take a bit of time
+# model summary
+summary(m_spamm)
+# fitst we need to create a numeric factor recording the coordinates of the sampled locations
+dat$pos <- numFactor(scale(dat$x), scale(dat$y))
+# then create a dummy group factor to be used as a random term
+dat$ID <- factor(rep(1, nrow(dat)))
+# fit the model
+m_tmb <- glmmTMB(calcium ~ elevation + region + mat(pos + 0 | ID), dat) # take some time to fit
+# model summary of fixed effects
+summary(m_tmb)
+#check model fitness
+library("DHARMa")
+sims <- simulateResiduals(m_tmb)
+plot(sims)
+
+
+
+
+hist(indvs$Veg_richness)
 # fits an exponential spatial correlation structure — nearby samples are more correlated than distant ones.
-model <- glmmTMB(Morphotype_richness ~ Vegetation + (1|Habitat), family = poisson, data = indvs)
+model <- glmmTMB(Veg_richness ~ Vegetation + (1 |X + Y) , family = poisson, data = indvs)
+summary(model)
+
+hist(indvs$Veg_shannon)
+model <- glm(Veg_shannon ~ Habitat, family = Gamma(link = "log"),data=indvs) 
+summary(model)
+
+
+glm(Veg_richness ~ Treatment, family = poisson, data = indvs)
+
+#to include spatial effects
+library(spaMM)
+
+# Matern correlation structure based on coordinates x and y
+model <- fitme(Veg_richness ~ Vegetation*Habitat + Matern(1 | x + y), data = indvs)
+
+
 
 #this is working, hurrah
-model <- glmer(Morphotype_richness ~ Vegetation*Habitat + (1|Location), family = poisson, data=indvs)
+model <- glmer(Morphotype_richness ~ Vegetation*Habitat + (1|pos), family = poisson, data=indvs)
 summary(model)
 deviance(model)/df.residual(model)
 
@@ -1578,19 +1682,6 @@ cooks
 
 
 
-#create "location" by joining lat and long into one variable
-indvs$Location <- paste(indvs$LatitudeN, indvs$LongitudeE, sep = ", ")
-
-library(sf)
-
-# convert longitude, latitude to sf object
-sf_data <- st_as_sf(indvs, coords = c("LongitudeE", "LatitudeN"), crs = 4326)
-# project to UTM (example: zone depends on your location)
-sf_data <- st_transform(sf_data, crs = 32630)  # UK example
-# extract projected coords
-coords <- st_coordinates(sf_data)
-indvs$X <- coords[,1]
-indvs$Y <- coords[,2]
 
 # Create a position factor
 indvs$pos <- numFactor(scale(indvs$LongitudeE), scale(indvs$LatitudeN))
