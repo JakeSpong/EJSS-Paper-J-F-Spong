@@ -1552,6 +1552,10 @@ summary(model)
 
 
 #### GLMs ----
+library(glmmTMB)
+library(tidyverse)
+library(DHARMa)      # model diagnostics
+library(emmeans)     # post-hoc comparisons
 
 #load in the data
 indvs <- readr::read_csv(  here::here("Data", "Soil-parameters-measured.csv"))
@@ -1568,7 +1572,7 @@ indvs$x <- coords[,1]
 indvs$y <- coords[,2]
 #create "location" by joining lat and long into one variable
 indvs$Location <- numFactor(indvs$x, indvs$y)
-indvs$pos <- numFactor(scale(indvs$x), scale(indvs$y))
+indvs$pos <- numFactor(as.numeric(scale(indvs$x)), as.numeric(scale(indvs$y)))
 #create a dummy group factor to be used as a random term
 indvs$ID <- factor(rep(1, nrow(indvs)))
 
@@ -1577,144 +1581,81 @@ indvs$Habitat <- factor(indvs$Habitat)
 indvs$Vegetation <- factor(indvs$Vegetation)
 indvs$Treatment <- factor(indvs$Treatment)
 
-#working! NOT ANYMORE FFS.  TRY RUNNING IN CLEAN R PROJECT?
-m_tmb <- glmmTMB(pH ~ Vegetation*Habitat, indvs, family = "gaussian") # may not be correct? 
-summary(m_tmb)
-
-model <- glmer(pH ~ Vegetation*Habitat + (1| pos), indvs, family = "gaussian")
-summary(model)
-
-
-#check normality of residuals
-ibrary(DHARMa)
-sim <- simulateResiduals(m_tmb)
-plot(sim)
-#or
-qqnorm(resid(m_tmb))
-qqline(resid(m_tmb))
-#check for homoscedasticity
-plot(fitted(model), resid(model))
-abline(h = 0, lty = 2)
-#check if spatial structure remains
-plot(indvs$pos, resid(model))
-
-library(spdep)
-
-coords <- as.matrix(indvs[, c("LongitudeE", "LatitudeN")])
-nb <- knn2nb(knearneigh(coords, k = 4))
-lw <- nb2listw(nb)
-
-moran.test(resid(m_tmb), lw)
-
-#alternatives
-
 library(mgcv)
 
-model <- gam(
-  TotalCarbon ~ Vegetation * Habitat + s(LongitudeE, LatitudeN),
-  data = indvs,
+# ── Fit spatial model using GAM with 2D thin plate spline ─────────────────────
+# s(x, y) accounts for spatial autocorrelation — equivalent role to your 
+# intended random effect, but numerically stable
+
+m_gam <- gam(
+  individualsperm2to10cmdepth ~ Habitat * Vegetation + s(x, y),
+  data   = indvs,
   method = "REML"
 )
-summary(model)
 
-library(spaMM)
-model <- fitme(TotalCarbon ~ Vegetation * Habitat + Matern(1|LongitudeE + LatitudeN), data = indvs, family = gaussian)
-summary(model)
+summary(m_gam)
 
-#example code for spatial modelling
-library(geoR)
-library(viridis)
-data(ca20)
-# put this in a data frame
-dat <- data.frame(x = ca20$coords[,1], y = ca20$coords[,2], calcium = ca20$data, elevation = ca20$covariate[,1], region = factor(ca20$covariate[,2]))
-# plot the data
-ggplot(dat, aes(x=x, y = y, color =calcium, shape = region)) +
-  geom_point() +
-  scale_color_viridis(option = "A")
-library(spaMM)
-# fit the model
-m_spamm <- fitme(calcium ~ elevation + region + Matern(1 | x + y), data = dat, family = "gaussian") # this take a bit of time
-# model summary
-summary(m_spamm)
-# fitst we need to create a numeric factor recording the coordinates of the sampled locations
-dat$pos <- numFactor(scale(dat$x), scale(dat$y))
-# then create a dummy group factor to be used as a random term
-dat$ID <- factor(rep(1, nrow(dat)))
-# fit the model
-m_tmb <- glmmTMB(calcium ~ elevation + region + mat(pos + 0 | ID), dat) # take some time to fit
-# model summary of fixed effects
-summary(m_tmb)
-#check model fitness
-library("DHARMa")
-sims <- simulateResiduals(m_tmb)
-plot(sims)
+# ── Significance of parametric (fixed) terms ──────────────────────────────────
+anova(m_gam, freq = FALSE)
 
+# ── Check spatial smooth significance ─────────────────────────────────────────
+# If s(x,y) p-value is non-significant, spatial autocorrelation is negligible
+# and the fixed-effects-only model is sufficient
 
-
-
-hist(indvs$Veg_richness)
-# fits an exponential spatial correlation structure — nearby samples are more correlated than distant ones.
-model <- glmmTMB(Veg_richness ~ Vegetation + (1 |X + Y) , family = poisson, data = indvs)
-summary(model)
-
-hist(indvs$Veg_shannon)
-model <- glm(Veg_shannon ~ Habitat, family = Gamma(link = "log"),data=indvs) 
-summary(model)
-
-
-glm(Veg_richness ~ Treatment, family = poisson, data = indvs)
-
-#to include spatial effects
-library(spaMM)
-
-# Matern correlation structure based on coordinates x and y
-model <- fitme(Veg_richness ~ Vegetation*Habitat + Matern(1 | x + y), data = indvs)
-
-
-
-#this is working, hurrah
-model <- glmer(Morphotype_richness ~ Vegetation*Habitat + (1|pos), family = poisson, data=indvs)
-summary(model)
-deviance(model)/df.residual(model)
-
-#for Cook's distance
-library(influence.ME)
-
-infl <- influence(model, group = "Location")  # or "obs" for observation-level
-cooks <- cooks.distance(infl)
-
-cooks
-
-
-
-
-# Create a position factor
-indvs$pos <- numFactor(scale(indvs$LongitudeE), scale(indvs$LatitudeN))
-indvs$group <- factor(1)  # single spatial group
-#model whether variable differs significantly between habitat anda bracken, with location as a random effect
-glmer(Morphotype_richness ~ Vegetation + (1|Habitat), family = poisson, data=indvs)
-
-# fits an exponential spatial correlation structure — nearby samples are more correlated than distant ones.
-model <- glmmTMB(pH ~ Habitat * Vegetation + LatitudeN + LongitudeE,
-                 family = Gamma(link="log"), data = indvs)
-
-model
-
-hist(1/log10(indvs$Morphotype_simpson))
-hist(indvs$pH)
-
-
-
-#this is working quite nicely, so this gls may be the approach to use
-library(nlme)
-
-model <- gls(
-  pH ~ Habitat * Vegetation,
-  correlation = corExp(form = ~ X + Y),
-  data = indvs
+# ── Model without spatial term for comparison ─────────────────────────────────
+m_gam_null <- gam(
+  individualsperm2to10cmdepth ~ Habitat * Vegetation,
+  data   = indvs,
+  method = "REML"
 )
 
-summary(model)
+# ── Compare models ────────────────────────────────────────────────────────────
+AIC(m_gam, m_gam_null)
+
+# ── Diagnostics ───────────────────────────────────────────────────────────────
+par(mfrow = c(2, 2))
+gam.check(m_gam)
+
+# ── Visualise spatial smooth ──────────────────────────────────────────────────
+plot(m_gam, scheme = 2, select = 1,
+     main = "Spatial autocorrelation smooth")
+
+
+#There was evidence for positive spatial autocorrelation in morphotype abundances (I = 0.29, p = 0.002), evenness (I = 0.28, p = 0.002), Shannon (I = 0.19, p = 0.015), and Simpson diversity (I = 0.22, p = 0.007).
+
+
+hist(indvs$Morphotype_evenness)
+
+#use Gamma(link = "log") for individualsperm2to10cmdepth
+
+# ── Best model: fixed effects only ───────────────────────────────────────────
+m_final <- glmmTMB(
+  Morphotype_evenness ~ Habitat * Vegetation,
+  data   = indvs,
+  family = Gamma(link = "log")
+)
+
+# ── Confirm no spatial autocorrelation in residuals ───────────────────────────
+library(DHARMa)
+sim_res <- simulateResiduals(m_final)
+testSpatialAutocorrelation(sim_res, x = indvs$x, y = indvs$y)
+# Expected: non-significant Moran's I — confirms spatial RE was unnecessary
+
+# ── Type III significance of fixed effects ────────────────────────────────────
+car::Anova(m_final, type = "III")
+
+
+#summary(m_final)
+
+# ── Post-hoc comparisons ──────────────────────────────────────────────────────
+library(emmeans)
+emm <- emmeans(m_final, ~ Habitat * Vegetation, type = "response")
+# ── Pairwise contrasts to confirm which differences are significant ────────────
+pairs(emm, adjust = "tukey")
+# ── Or more targeted: effect of bracken within each habitat ───────────────────
+emm_hab <- emmeans(m_final, ~ Vegetation | Habitat, type = "response")
+pairs(emm_hab, adjust = "tukey")
+
 
 #### RDA analysis of plant and morphotype community composition ----
 d <- readr::read_csv(here::here("Data", "Vegetation-Survey-Data.csv")) 
@@ -1773,7 +1714,7 @@ spe_hell <- decostand(spe, method = "hellinger")
 #combine with factors and sample ID
 d <- cbind(indvs[, c("Location", "LongitudeE", "LatitudeN", "x", "y", "pos")], d)
 
-#parcel out varince due to spatial correlation first - this is working!
+#parcel out varince due to spatial correlation first (x and y coordinates of each sample)
 community <- rda(spe_hell ~ Habitat*Vegetation + Condition(x + y), data = d)
 community
 #is the model significant?
