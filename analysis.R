@@ -1385,7 +1385,7 @@ indvs <- readr::read_csv(
 ) 
 #indvs <- na.omit(indvs)
 
-anova <- aov(indvs$`DOC Concentration (mgCperg)`~ indvs$Habitat * indvs$Vegetation)
+anova <- aov(indvs$Nematodespergdrysoil~ indvs$Habitat * indvs$Vegetation)
 summary(anova)
 
 #tukey's test to identify significant interactions
@@ -1577,9 +1577,14 @@ indvs$Habitat <- factor(indvs$Habitat)
 indvs$Vegetation <- factor(indvs$Vegetation)
 indvs$Treatment <- factor(indvs$Treatment)
 
-#working!
-m_tmb <- glmmTMB(pH ~ Vegetation*Habitat + (1 | pos), indvs) # may not be correct? 
+#working! NOT ANYMORE FFS.  TRY RUNNING IN CLEAN R PROJECT?
+m_tmb <- glmmTMB(pH ~ Vegetation*Habitat, indvs, family = "gaussian") # may not be correct? 
 summary(m_tmb)
+
+model <- glmer(pH ~ Vegetation*Habitat + (1| pos), indvs, family = "gaussian")
+summary(model)
+
+
 #check normality of residuals
 ibrary(DHARMa)
 sim <- simulateResiduals(m_tmb)
@@ -1711,9 +1716,45 @@ model <- gls(
 
 summary(model)
 
+#### RDA analysis of plant and morphotype community composition ----
+d <- readr::read_csv(here::here("Data", "Vegetation-Survey-Data.csv")) 
+
+#order samples by ID alphabetically
+d <- arrange(d, d["Sample ID"])
+d <- as.data.frame(d)
+#replace row index with sample names
+rownames(d) <- c("GB1", "GB2", "GB3", "GB4", "GB5", "GN10", "GN3", "GN4", "GN5","GN9", "UB1","UB10","UB4","UB6", "UB9", "UN1", "UN10", "UN3", "UN7", "UN8", "WB3","WB4","WB6","WB7","WB8","WN2","WN4","WN5","WN6","WN8")
+#replace null (empty excell cell) with "0"
+d[is.na(d)] <- 0
+#make sure our variables are coded as factors
+d$Habitat <- factor(d$Habitat, levels = c("Grassland", "Heathland", "Woodland"), labels = c("Grassland", "Heathland", "Woodland"))
+
+#just the species counts
+spe <- d[,-(1:9)]
+spe <- spe[,-(23:24)]
+
+#hellinger transform the communtiy matrix
+spe_hell <- decostand(spe, method = "hellinger")
+#combine with factors and sample ID
+d <- cbind(indvs[, c("Location", "LongitudeE", "LatitudeN", "x", "y", "pos")], d)
+
+#parcel out varince due to spatial correlation first - this is working!
+community <- rda(spe_hell ~ Habitat*Vegetation + Condition(x + y), data = d)
+community
+#is the model significant?
+anova(community, step = 4999)
+#signficance of the explanatory variables (fixed effects)
+anova(community, by = "terms", step=4999)
+#significance of the axes
+anova(community, by = "axis", step=4999)
+
+anova(model, by = "margin")
+
+#### RDA analysis of morphotype community composition ----
 
 #morphotype community composition
-d <- readr::read_csv(here::here("Data", "Week-1+2-mites-springtails-morphotypes.csv"), show_col_types = FALSE) 
+d <- readr::read_csv(here::here("Data", "Week-1-mites-springtails-morphotypes.csv"), show_col_types = FALSE) 
+#d <- readr::read_csv(here::here("Data", "Week-1+2-mites-springtails-morphotypes.csv"), show_col_types = FALSE) 
 #order samples by ID alphabetically
 d <- arrange(d, d["Sample ID"])
 d <- as.data.frame(d)
@@ -1730,9 +1771,14 @@ spe <- as.matrix(spe)
 #hellinger transform the communtiy matrix
 spe_hell <- decostand(spe, method = "hellinger")
 #combine with factors and sample ID
-d <- cbind(indvs[, c("Location", "LongitudeE", "LatitudeN", "X", "Y")], d)
+d <- cbind(indvs[, c("Location", "LongitudeE", "LatitudeN", "x", "y", "pos")], d)
 
 #parcel out varince due to spatial correlation first - this is working!
-community <- rda(spe_hell ~ Habitat * Vegetation + Condition(X, Y), data = d)
+community <- rda(spe_hell ~ Habitat*Vegetation + Condition(x + y), data = d)
 community
+#is the model significant?
+anova(community, step = 4999)
+#signficance of the explanatory variables (fixed effects)
 anova(community, by = "terms", step=4999)
+#significance of the axes
+anova(community, by = "axis", step=4999)
