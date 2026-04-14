@@ -1556,11 +1556,12 @@ library(glmmTMB)
 library(tidyverse)
 library(DHARMa)      # model diagnostics
 library(emmeans)     # post-hoc comparisons
+library(multcomp)
 
 #load in the data
 indvs <- readr::read_csv(  here::here("Data", "Soil-parameters-measured.csv"))
 #create treatment variable by comining habitat and veg
-indvs$Treatment <- paste(indvs$Habitat, indvs$Vegetation, sep = "-")
+#indvs$Treatment <- paste(indvs$Habitat, indvs$Vegetation, sep = "-")
 # convert longitude, latitude to sf object
 sf_data <- st_as_sf(indvs, coords = c("LongitudeE", "LatitudeN"), crs = 4326)
 # project to UTM (example: zone depends on your location)
@@ -1571,15 +1572,15 @@ coords <- st_coordinates(sf_data)
 indvs$x <- coords[,1]
 indvs$y <- coords[,2]
 #create "location" by joining lat and long into one variable
-indvs$Location <- numFactor(indvs$x, indvs$y)
-indvs$pos <- numFactor(as.numeric(scale(indvs$x)), as.numeric(scale(indvs$y)))
+#indvs$Location <- numFactor(indvs$x, indvs$y)
+#indvs$pos <- numFactor(as.numeric(scale(indvs$x)), as.numeric(scale(indvs$y)))
 #create a dummy group factor to be used as a random term
-indvs$ID <- factor(rep(1, nrow(indvs)))
+#indvs$ID <- factor(rep(1, nrow(indvs)))
 
 #ensure habitat is treated as a factor
 indvs$Habitat <- factor(indvs$Habitat)
 indvs$Vegetation <- factor(indvs$Vegetation)
-indvs$Treatment <- factor(indvs$Treatment)
+#indvs$Treatment <- factor(indvs$Treatment)
 
 library(mgcv)
 
@@ -1588,7 +1589,7 @@ library(mgcv)
 # intended random effect, but numerically stable
 
 m_gam <- gam(
-  individualsperm2to10cmdepth ~ Habitat * Vegetation + s(x, y),
+  TotalCarbon ~ Habitat * Vegetation + s(x, y),
   data   = indvs,
   method = "REML"
 )
@@ -1621,26 +1622,26 @@ plot(m_gam, scheme = 2, select = 1,
      main = "Spatial autocorrelation smooth")
 
 
-#There was evidence for positive spatial autocorrelation in morphotype abundances (I = 0.29, p = 0.002), evenness (I = 0.28, p = 0.002), Shannon (I = 0.19, p = 0.015), and Simpson diversity (I = 0.22, p = 0.007).
 
-
-hist(indvs$Morphotype_evenness)
-
+hist(indvs$Veg_shannon)
+#indvs <- na.omit(indvs)
 #use Gamma(link = "log") for individualsperm2to10cmdepth
 
 # ── Best model: fixed effects only ───────────────────────────────────────────
 m_final <- glmmTMB(
-  Morphotype_evenness ~ Habitat * Vegetation,
+  Veg_shannon ~ Habitat * Vegetation,
   data   = indvs,
-  family = Gamma(link = "log")
-)
-
+  family = gaussian())
 # ── Confirm no spatial autocorrelation in residuals ───────────────────────────
-library(DHARMa)
 sim_res <- simulateResiduals(m_final)
 testSpatialAutocorrelation(sim_res, x = indvs$x, y = indvs$y)
-# Expected: non-significant Moran's I — confirms spatial RE was unnecessary
 
+sim_res <- simulateResiduals(m_final)
+plot(sim_res)
+testDispersion(sim_res)
+
+# Expected: non-significant Moran's I — confirms spatial RE was unnecessary
+summary(m_final)
 # ── Type III significance of fixed effects ────────────────────────────────────
 car::Anova(m_final, type = "III")
 
@@ -1648,7 +1649,6 @@ car::Anova(m_final, type = "III")
 #summary(m_final)
 
 # ── Post-hoc comparisons ──────────────────────────────────────────────────────
-library(emmeans)
 emm <- emmeans(m_final, ~ Habitat * Vegetation, type = "response")
 # ── Pairwise contrasts to confirm which differences are significant ────────────
 pairs(emm, adjust = "tukey")
@@ -1656,6 +1656,8 @@ pairs(emm, adjust = "tukey")
 emm_hab <- emmeans(m_final, ~ Vegetation | Habitat, type = "response")
 pairs(emm_hab, adjust = "tukey")
 
+#to stop the next tab opening
+a<0
 
 #### RDA analysis of plant and morphotype community composition ----
 d <- readr::read_csv(here::here("Data", "Vegetation-Survey-Data.csv")) 
