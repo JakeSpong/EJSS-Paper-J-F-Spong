@@ -640,7 +640,7 @@ d <- readr::read_csv(
 )
 #graphing boxplots. Units are ppm aka mg per kg
 Al_bxp <- ggboxplot(d, x = "Habitat", y = "Al_mgperg", color = "Vegetation", palette = c("black", "limegreen"), lwd = 0.75, add = "jitter",  add.params = list(size = 1.5,alpha = 1, width = 0.15))  +
-  labs(y =  expression("Al (mg g"^-1*")")) + theme(
+  labs(y = expression("Al"^"3+"*" (mg g"^-1*")")) + theme(
     #remove x axis label, tickes, labels
     axis.title.x=element_blank(),
     # Remove panel border
@@ -662,7 +662,7 @@ Al_bxp <- ggboxplot(d, x = "Habitat", y = "Al_mgperg", color = "Vegetation", pal
 
 #graphing boxplots. Units are ppm aka mg per kg
 Zn_bxp <- ggboxplot(d, x = "Habitat", y = "Zn_mgperg", color = "Vegetation", palette = c("black", "limegreen"), lwd = 0.75, add = "jitter",  add.params = list(size = 1.5,alpha = 1, width = 0.15))  +
-  labs(y =  expression("Zn (mg g"^-1*")")) + theme(
+  labs(y = expression("Zn"^"2+"*" (mg g"^-1*")")) + theme(
     #remove x axis label, tickes, labels
     axis.title.x=element_blank(),
     axis.text.x=element_blank(),
@@ -686,7 +686,7 @@ Zn_bxp <- ggboxplot(d, x = "Habitat", y = "Zn_mgperg", color = "Vegetation", pal
 
 #graphing boxplots. Units are ppm aka mg per kg
 Mn_bxp <- ggboxplot(d, x = "Habitat", y = "Mn_mgperg", color = "Vegetation", palette = c("black", "limegreen"), lwd = 0.75, add = "jitter",  add.params = list(size = 1.5,alpha = 1, width = 0.15))  +
-  labs(y =  expression("Mn (mg g"^-1*")")) + theme(
+  labs(y = expression("Mn"^"2+"*" (mg g"^-1*")")) + theme(
     #remove x axis label, tickes, labels
     axis.title.x=element_blank(),
     # Remove panel border
@@ -708,7 +708,7 @@ Mn_bxp <- ggboxplot(d, x = "Habitat", y = "Mn_mgperg", color = "Vegetation", pal
 
 #graphing boxplots. Units are ppm aka mg per kg
 Mg_bxp <- ggboxplot(d, x = "Habitat", y = "Mg_mgperg", color = "Vegetation", palette = c("black", "limegreen"), lwd = 0.75, add = "jitter",  add.params = list(size = 1.5,alpha = 1, width = 0.15))  +
-  labs(y =  expression("Mg (mg g"^-1*")")) + theme(
+  labs(y = expression("Mg"^"2+"*" (mg g"^-1*")")) + theme(
     #remove x axis label, tickes, labels
     axis.title.x=element_blank(),
     axis.text.x=element_blank(),
@@ -732,7 +732,7 @@ Mg_bxp <- ggboxplot(d, x = "Habitat", y = "Mg_mgperg", color = "Vegetation", pal
 
 #graphing boxplots. Units are ppm aka mg per kg
 Ca_bxp <- ggboxplot(d, x = "Habitat", y = "Ca_mgperg", color = "Vegetation", palette = c("black", "limegreen"), lwd = 0.75, add = "jitter",  add.params = list(size = 1.5,alpha = 1, width = 0.15))  +
-  labs(y =  expression("Ca (mg g"^-1*")")) + theme(
+  labs(y = expression("Ca"^"2+"*" (mg g"^-1*")")) + theme(
     #remove x axis label, tickes, labels
     axis.title.x=element_blank(),
     axis.text.x=element_blank(),
@@ -757,7 +757,7 @@ Ca_bxp <- ggboxplot(d, x = "Habitat", y = "Ca_mgperg", color = "Vegetation", pal
 
 #graphing boxplots. Units are ppm aka mg per kg
 Na_bxp <- ggboxplot(d, x = "Habitat", y = "Na_mgperg", color = "Vegetation", palette = c("black", "limegreen"), lwd = 0.75, add = "jitter",  add.params = list(size = 1.5,alpha = 1, width = 0.15))  +
-  labs(y =  expression("Na (mg g"^-1*")")) + theme(
+  labs(y = expression("Na"^"+"*" (mg g"^-1*")")) + theme(
     #remove x axis label, tickes, labels
     axis.title.x=element_blank(),
     axis.text.x=element_blank(),
@@ -783,7 +783,7 @@ Na_bxp <- ggboxplot(d, x = "Habitat", y = "Na_mgperg", color = "Vegetation", pal
 
 #graphing boxplots. Units are ppm aka mg per kg
 K_bxp <- ggboxplot(d, x = "Habitat", y = "K_mgperg", color = "Vegetation", palette = c("black", "limegreen"), lwd = 0.75, add = "jitter",  add.params = list(size = 1.5,alpha = 1, width = 0.15))  +
-  labs(y =  expression("K (mg g"^-1*")"))+ theme(
+  labs(y = expression("K"^"+"*" (mg g"^-1*")"))+ theme(
     #remove x axis label, tickes, labels
     axis.title.x=element_blank(),
     axis.text.x=element_blank(),
@@ -811,7 +811,7 @@ panel_bxp <- ggarrange(Na_bxp, K_bxp, Ca_bxp, Mg_bxp, Zn_bxp, Mn_bxp, Al_bxp,
                        common.legend = TRUE, legend="top")
 
 show(panel_bxp)
-ggsave(path = "figures", paste0(Sys.Date(), "_Supp-3-Figure.svg"), panel_bxp)
+ggsave(path = "figures", filename = paste0(Sys.Date(), "_Supp-3-Figure.svg"), plot = panel_bxp, width = 8, height = 10, units = "in")
 
 #### pH vs Al (Supp. Figure 4) ----
 # Clean the data, removing non 0s
@@ -1443,6 +1443,8 @@ moran_axis1
 moran_axis2 <- moran.test(site_scores[,2], lw, zero.policy = TRUE)
 moran_axis2
 
+
+
 #d <- na.omit(d)
 
 #the coordinates of sample sites
@@ -1456,6 +1458,8 @@ hist(dists)
 lw <- nb2listw(nb, style = "W")
 #test an environment variable
 moran.test(d$`K_mg/g`, lw)
+
+
 
 
 #### Effect of moisture on inverts extracted ----
@@ -1581,57 +1585,57 @@ indvs$y <- coords[,2]
 indvs$Habitat <- factor(indvs$Habitat)
 indvs$Vegetation <- factor(indvs$Vegetation)
 #indvs$Treatment <- factor(indvs$Treatment)
+# 
+# library(mgcv)
+# 
+# # ── Fit spatial model using GAM with 2D thin plate spline ─────────────────────
+# # s(x, y) accounts for spatial autocorrelation — equivalent role to your 
+# # intended random effect, but numerically stable
+# 
+# m_gam <- gam(
+#   TotalCarbon ~ Habitat * Vegetation + s(x, y),
+#   data   = indvs,
+#   method = "REML"
+# )
+# 
+# summary(m_gam)
+# 
+# # ── Significance of parametric (fixed) terms ──────────────────────────────────
+# anova(m_gam, freq = FALSE)
+# 
+# # ── Check spatial smooth significance ─────────────────────────────────────────
+# # If s(x,y) p-value is non-significant, spatial autocorrelation is negligible
+# # and the fixed-effects-only model is sufficient
+# 
+# # ── Model without spatial term for comparison ─────────────────────────────────
+# m_gam_null <- gam(
+#   individualsperm2to10cmdepth ~ Habitat * Vegetation,
+#   data   = indvs,
+#   method = "REML"
+# )
+# 
+# # ── Compare models ────────────────────────────────────────────────────────────
+# AIC(m_gam, m_gam_null)
+# 
+# # ── Diagnostics ───────────────────────────────────────────────────────────────
+# par(mfrow = c(2, 2))
+# gam.check(m_gam)
+# 
+# # ── Visualise spatial smooth ──────────────────────────────────────────────────
+# plot(m_gam, scheme = 2, select = 1,
+#      main = "Spatial autocorrelation smooth")
 
-library(mgcv)
-
-# ── Fit spatial model using GAM with 2D thin plate spline ─────────────────────
-# s(x, y) accounts for spatial autocorrelation — equivalent role to your 
-# intended random effect, but numerically stable
-
-m_gam <- gam(
-  TotalCarbon ~ Habitat * Vegetation + s(x, y),
-  data   = indvs,
-  method = "REML"
-)
-
-summary(m_gam)
-
-# ── Significance of parametric (fixed) terms ──────────────────────────────────
-anova(m_gam, freq = FALSE)
-
-# ── Check spatial smooth significance ─────────────────────────────────────────
-# If s(x,y) p-value is non-significant, spatial autocorrelation is negligible
-# and the fixed-effects-only model is sufficient
-
-# ── Model without spatial term for comparison ─────────────────────────────────
-m_gam_null <- gam(
-  individualsperm2to10cmdepth ~ Habitat * Vegetation,
-  data   = indvs,
-  method = "REML"
-)
-
-# ── Compare models ────────────────────────────────────────────────────────────
-AIC(m_gam, m_gam_null)
-
-# ── Diagnostics ───────────────────────────────────────────────────────────────
-par(mfrow = c(2, 2))
-gam.check(m_gam)
-
-# ── Visualise spatial smooth ──────────────────────────────────────────────────
-plot(m_gam, scheme = 2, select = 1,
-     main = "Spatial autocorrelation smooth")
 
 
-
-hist(indvs$Veg_shannon)
+hist(indvs$Na_mgperg)
 #indvs <- na.omit(indvs)
 #use Gamma(link = "log") for individualsperm2to10cmdepth
 
 # ── Best model: fixed effects only ───────────────────────────────────────────
 m_final <- glmmTMB(
-  Veg_shannon ~ Habitat * Vegetation,
+  Al_mgperg ~ Habitat * Vegetation,
   data   = indvs,
-  family = gaussian())
+  family = Gamma(link = "log")) #Gamma(link = "log")
 # ── Confirm no spatial autocorrelation in residuals ───────────────────────────
 sim_res <- simulateResiduals(m_final)
 testSpatialAutocorrelation(sim_res, x = indvs$x, y = indvs$y)
@@ -1649,12 +1653,19 @@ car::Anova(m_final, type = "III")
 #summary(m_final)
 
 # ── Post-hoc comparisons ──────────────────────────────────────────────────────
-emm <- emmeans(m_final, ~ Habitat * Vegetation, type = "response")
+emm <- emmeans(m_final, ~ Vegetation*Habitat, type = "response")
 # ── Pairwise contrasts to confirm which differences are significant ────────────
 pairs(emm, adjust = "tukey")
+#get signficance letters
+cld_result <- cld(emm, Letters = letters, adjust = "tukey")
+# 5. View results
+print(cld_result)
+
 # ── Or more targeted: effect of bracken within each habitat ───────────────────
 emm_hab <- emmeans(m_final, ~ Vegetation | Habitat, type = "response")
 pairs(emm_hab, adjust = "tukey")
+
+
 
 #to stop the next tab opening
 a<0
