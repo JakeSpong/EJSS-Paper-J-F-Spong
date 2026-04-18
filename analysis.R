@@ -836,7 +836,8 @@ plot <- ggplot(pHAlmodel, aes(x = pH, y = Al_mgperg)) +
            hjust = 0, vjust = 1, size = 4, color = "black") + 
   labs(
     x = "pH",
-    y = expression("[Al] (mg g"^-1*")")
+    
+    y = expression("Al"^" 3+"*" (mg g"^-1*")")
   ) +  theme(
     
     # Remove panel border
@@ -1627,7 +1628,7 @@ indvs$Vegetation <- factor(indvs$Vegetation)
 
 
 
-hist(indvs$Na_mgperg)
+hist(indvs$Nematodespergdrysoil)
 #indvs <- na.omit(indvs)
 #use Gamma(link = "log") for individualsperm2to10cmdepth
 
@@ -1646,8 +1647,8 @@ testDispersion(sim_res)
 
 # Expected: non-significant Moran's I — confirms spatial RE was unnecessary
 summary(m_final)
-# ── Type III significance of fixed effects ────────────────────────────────────
-car::Anova(m_final, type = "III")
+# ── Type II significance of fixed effects ────────────────────────────────────
+car::Anova(m_final, type = "II")
 
 
 #summary(m_final)
