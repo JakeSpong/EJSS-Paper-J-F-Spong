@@ -493,7 +493,7 @@ panel_bxp <- ggarrange(pH_bxp, gsmc_bxp, tsc_bxp, npoc_bxp, tnb_bxp, cnr_bxp,
 
 show(panel_bxp)
 
-#### SUVA, alpha, total nitrogen(Supp. Figure 2) ----
+#### analyse absorbance data ----
 #quality needs to be analysed; easiest thing to do is: check data for nice curve, fit 2 component exponential decay curve through data.  Get slope from this (spectral slope), and the beta paramter from this slope
 #read in the processed, STANDARDISED absorbance data
 d <- readr::read_csv(
@@ -524,14 +524,13 @@ augmented <- fitted %>%
 qplot(`Wavelength (nm)`, `Standardized Absorbance (L mg-1 cm-1)`, data = augmented, geom = 'point', colour = `Sample ID`) +
   geom_line(aes(y=.fitted))
 
-#now we have extracted the paramters of our lines of best fit, what do we do now?!?!?!
+
 table$Habitat <- c(rep("Grassland",10), rep("Heathland",10),rep("Woodland",10))
 table$Vegetation <- c(rep("Bracken Present",5), rep("Bracken Absent", 5),rep("Bracken Present",5), rep("Bracken Absent", 5),rep("Bracken Present",5), rep("Bracken Absent", 5))
 
 #boxplot the alpha, which describes the curve ie how quicky we go from low wavelength (high mass C compounds) to high wavelength (low mass C compounds)
-#plot carbon:nitrogen ratio
 alpha_bxp <- ggboxplot(table, x = "Habitat", y = 'alpha', color = "Vegetation", palette = c("black", "limegreen"), lwd = 0.75, add = "jitter",  add.params = list(size = 1.5,alpha = 1, width = 0.15))  +
-  labs(y = "alpha parameter") + theme(
+  labs(y = "DOM fitted curve alpha parameter") + theme(
     #remove x axis label
     axis.title.x=element_blank(),
     # Remove panel border
@@ -559,43 +558,67 @@ abs <- d %>%
   filter(`Wavelength (nm)` == wavelength_of_interest) %>% #filter for specific wavelength
   select(`Sample ID`, `Standardized Absorbance (L mg-1 cm-1)`) #select the relevant columns
 
+#list of wavelengths of interest
+wavelength_of_interest <- list(250, 254, 260, 265, 272, 280, 285, 300, 340, 350, 365, 400, 436, 465)
+
+#filter data to extract absorbance at wavelength of interest
+abs <- d %>%
+  filter(`Wavelength (nm)` %in% unlist(wavelength_of_interest)) %>%
+  select(`Sample ID`, `Wavelength (nm)`, `Standardized Absorbance (L mg-1 cm-1)`) %>%
+  pivot_wider(
+    names_from = `Wavelength (nm)`,
+    values_from = `Standardized Absorbance (L mg-1 cm-1)`,
+  )
+
 #add in habitat and vegetation factors
 abs$Habitat <- c(rep("Grassland",10), rep("Heathland",10),rep("Woodland",10))
 abs$Vegetation <- c(rep("Bracken Present",5), rep("Bracken Absent", 5),rep("Bracken Present",5), rep("Bracken Absent", 5),rep("Bracken Present",5), rep("Bracken Absent", 5))
 
 abs <- as.data.frame(abs)
+#save for later modelling analysis
+write.csv(abs, "Data/Absorbancea at Key Wavelengths.csv", row.names = FALSE)
 
-#rename Nonbracken so that it is plotted first, and bracken second
-abs$Vegetation[abs$Vegetation == 'Non-Bracken'] <- 'Bracken Absent'
-abs$Vegetation[abs$Vegetation == 'Bracken'] <- 'Bracken Present'
-#create string for y axis label
+#### SUVA, alpha, total nitrogen(Supp. Figure 2) ----
+indvs <- readr::read_csv(
+  here::here("Data", "Soil-parameters-measured.csv")
+) 
+#specify factors
+indvs$Habitat <- factor(indvs$Habitat, levels = c("Grassland", "Heathland", "Woodland"))
+indvs$Vegetation <- factor(indvs$Vegetation, levels = c("Bracken Absent", "Bracken Present"))
+
 yaxis_label <- paste("Absorbance at ", wavelength_of_interest, "nm")
 
 
-#plot absorbance
-abs_bxp <- ggboxplot(abs, x = "Habitat", y = "`Standardized Absorbance (L mg-1 cm-1)`", color = "Vegetation", palette = c("black", "limegreen"), lwd = 0.75, add = "jitter",  add.params = list(size = 1.5,alpha = 1, width = 0.15))  +
-  labs(y = yaxis_label) + theme(
-    #remove x axis label
-    axis.title.x=element_blank(),
-    axis.text.x=element_blank(),
-    axis.ticks.x=element_blank(),
-    # Remove panel border
-    panel.border = element_blank(),  
-    # Remove panel grid lines
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    # Remove panel background
-    panel.background = element_blank(),
-    # Add axis line
-    axis.line = element_line(colour = "black", linewidth = 0.5),
-    #change colour and thickness of axis ticks
-    axis.ticks = element_line(colour = "black", linewidth = 0.5),
-    #change axis labels colour
-    axis.title.y = element_text(colour = "black"),
-    #change tick labels colour
-    axis.text.y = element_text(colour = "black"),
-    
-  ) 
+wavelengths <- c(250, 254, 260, 265, 272, 280, 300)
+plot_list <- list()
+
+for (wl in wavelengths) {
+  
+  y_var <- paste0("`", wl, " Absorbance (L mg-1 cm-1)`")  # wrap in backticks
+  yaxis_label <- paste0("Absorbance at ", wl, " nm")
+  
+  p <- ggboxplot(indvs, x = "Habitat", y = y_var, color = "Vegetation", 
+                 palette = c("black", "limegreen"), lwd = 0.75, add = "jitter",  
+                 add.params = list(size = 1.5, alpha = 1, width = 0.15)) +
+    labs(y = yaxis_label) + 
+    theme(
+      axis.title.x = element_blank(),
+      axis.text.x = element_blank(),
+      axis.ticks.x = element_blank(),
+      panel.border = element_blank(),  
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.background = element_blank(),
+      axis.line = element_line(colour = "black", linewidth = 0.5),
+      axis.ticks = element_line(colour = "black", linewidth = 0.5),
+      axis.title.y = element_text(colour = "black"),
+      axis.text.y = element_text(colour = "black")
+    )
+  
+  plot_list[[as.character(wl)]] <- p
+}
+
+
 
 #refresh the dataframe d with the correct one
 d <- readr::read_csv(
@@ -625,14 +648,24 @@ tsn_bxp <- ggboxplot(d, x = "Habitat", y = 'TotalNitrogen', color = "Vegetation"
          #change tick labels colour
          axis.text.y = element_text(colour = "black"),
        ) 
-#create the panel figure
-supp_panel_bxp <- ggarrange(abs_bxp, alpha_bxp, tsn_bxp, 
-                            labels = c("A", "B", "C"),
-                            ncol = 2, nrow = 2,
+
+
+supp_panel_bxp <- ggarrange(plot_list[["250"]], plot_list[["254"]], plot_list[["260"]], plot_list[["265"]], plot_list[["272"]], plot_list[["280"]], plot_list[["300"]], alpha_bxp, tsn_bxp,
+                            labels = c("A", "B", "C", "D", "E", "F", "G", "H", "I"),
+                            ncol = 2, nrow = 5,
                             common.legend = TRUE, legend="top")
 
 show(supp_panel_bxp)
-ggsave(path = "figures", paste0(Sys.Date(), "_Supp-2-Figure.svg"), supp_panel_bxp)
+ggsave(path = "figures", paste0(Sys.Date(), "_updated_Supp-2-Figure.svg"), supp_panel_bxp, width = 10, height = 17)
+
+#create the panel figure
+# supp_panel_bxp <- ggarrange(abs_bxp, alpha_bxp, tsn_bxp, 
+#                             labels = c("A", "B", "C"),
+#                             ncol = 2, nrow = 2,
+#                             common.legend = TRUE, legend="top")
+# 
+# show(supp_panel_bxp)
+# ggsave(path = "figures", paste0(Sys.Date(), "_Supp-2-Figure.svg"), supp_panel_bxp)
 
 #### cations (Supp. Figure 3) ----
 d <- readr::read_csv(
@@ -1628,13 +1661,13 @@ indvs$Vegetation <- factor(indvs$Vegetation)
 
 
 
-hist(indvs$Nematodespergdrysoil)
+hist(indvs$`260 Absorbance (L mg-1 cm-1)`)
 #indvs <- na.omit(indvs)
 #use Gamma(link = "log") for individualsperm2to10cmdepth
 
 # ── Best model: fixed effects only ───────────────────────────────────────────
 m_final <- glmmTMB(
-  Al_mgperg ~ Habitat * Vegetation,
+  alpha ~ Habitat * Vegetation,
   data   = indvs,
   family = Gamma(link = "log")) #Gamma(link = "log")
 # ── Confirm no spatial autocorrelation in residuals ───────────────────────────
